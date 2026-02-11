@@ -1,6 +1,6 @@
 import numpy as np
 import os
-os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection 
 import cv2 as cv
 import blickfeld_qb2
 import time
@@ -50,7 +50,7 @@ with blickfeld_qb2.Channel(fqdn_or_ip="192.168.0.253") as channel:
         cur_time = time.monotonic()
         #time_to_pause = frameTime - (cur_time-old_time)
         #time.sleep(time_to_pause)
-        running = False
+        running = False 
 
 
 # Savedata
