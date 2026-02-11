@@ -9,4 +9,4 @@ detections = detectRectangularPlanePoints(ptCloud,boardDim,"DimensionTolerance",
 % should check if any of the detections worked.
 
 % Also, need to try to restrict the size of the data to get only the board
-% to see if that helps
+% to see if tha
