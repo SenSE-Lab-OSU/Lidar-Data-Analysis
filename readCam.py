@@ -1,6 +1,6 @@
 import numpy as np
 import os
-os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection 
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
 import cv2 as cv
 import blickfeld_qb2
 import time
@@ -30,7 +30,6 @@ if not ret:
 print("Webcam dimensions: {}".format(testFrame.shape))
 
 
-# I just copied the IP, is this the right thing?
 with blickfeld_qb2.Channel(fqdn_or_ip="192.168.0.253") as channel:
     service = blickfeld_qb2.core_processing.services.PointCloud(channel)
 
