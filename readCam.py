@@ -1,22 +1,35 @@
 import numpy as np
-import os
-import json
+import os, json, re, time
+import blickfeld_qb2
 os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
 import cv2 as cv
-import blickfeld_qb2
-import time
 
-# Finding Data Save path
+# Finding Data Save path from config file
 f = open("config.json")
 savePath = json.load(f)
 savePath = savePath["dataPath"]
 usIn = input("Save path is {}\nIf it looks right press enter, else type in correct path or fix config file and try again\n>>".format(savePath))
 if len(usIn) != 0:
     savePath = usIn
-savePath += "\\" +  time.strftime("data-%m-%d-%Y",time.gmtime())
+# appending date to savepath
+savePath = os.path.join(savePath, time.strftime("data-%m-%d-%Y",time.gmtime())) 
 print("Using savepath: {}".format(savePath))
-os.makedirs(savePath,exist_ok=True)
-time.sleep(5)
+# making path if not exists
+if not os.path.isdir(savePath):
+    print("Path does not exist, creating",end='')
+    os.makedirs(savePath,exist_ok=True)
+    print(os.path.isdir(savePath))
+# Checking if there are files in directory
+preExistingFiles = os.listdir(savePath)
+# Changing save index to one not in use
+saveIndex = 1
+if len(preExistingFiles) != 0:
+    print("Files already in save directory.  ",end='')
+    res = [int(re.search('_(\\d+)\\.',i).group(1)) for i in preExistingFiles if re.search('_(\\d+)\\.',i) is not None]
+    saveIndex = np.max(res) + 1
+print("saving at _{}".format(saveIndex))
+        
+time.sleep(10)
 
 
 # Open camera, 0 is default, 1 may be the usb camera
@@ -47,8 +60,8 @@ with blickfeld_qb2.Channel(fqdn_or_ip="192.168.0.253") as channel:
 
 
         # Savedata
-        np.save(savePath+"lidar_{}.npy".format(num),lidarArr)
-        cv.imwrite(savePath+"cam_{}.png".format(num),camArr[0,:,:,:])
+        np.save(savePath+"lidar_{}.npy".format(num),lidarFrame)
+        cv.imwrite(savePath+"cam_{}.png".format(num),camFrame)
         print("Frames have been saved using number {}".format(num))
         usIn = input("Press enter to take another frame, type anything to quit0")
         if len(usIn) != 0:
