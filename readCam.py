@@ -1,26 +1,28 @@
 import numpy as np
 import os
+import json
 os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
 import cv2 as cv
 import blickfeld_qb2
 import time
 
+# Finding Data Save path
+f = open("config.json")
+savePath = json.load(f)
+savePath = savePath["dataPath"]
+usIn = input("Save path is {}\nIf it looks right press enter, else type in correct path or fix config file and try again\n>>".format(savePath))
+if len(usIn) != 0:
+    savePath = usIn
+savePath += "\\" +  time.strftime("data-%m-%d-%Y",time.gmtime())
+print("Using savepath: {}".format(savePath))
+os.makedirs(savePath,exist_ok=True)
+time.sleep(5)
 
-# 
-setFPS = 10
-frameTime = 1/setFPS
-running = True
-savePath = "data/"
-num = input("SelectNumber")
 
-
-lidarFrameList = []
-camFrameList = [] 
-
-
-
-# Select camera, 0 is default, 1 may be the usb camera
+# Open camera, 0 is default, 1 may be the usb camera
 cap = cv.VideoCapture(1)
+cap.set(cv.CAP_PROP_FRAME_WIDTH, 3840)
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, 2160)
 if not cap.isOpened():
     print("Cannot open camera")
     exit()
@@ -29,38 +31,27 @@ if not ret:
     print("Camera failed to read")
 print("Webcam dimensions: {}".format(testFrame.shape))
 
-
+# Open LIDAR
 with blickfeld_qb2.Channel(fqdn_or_ip="192.168.0.253") as channel:
     service = blickfeld_qb2.core_processing.services.PointCloud(channel)
-
+    
+    running = True
+    num = 1
     while running:
-        old_time = time.monotonic() 
-        print("frame at {}s".format(old_time))
-        
-        #Get frames -- commented out so it doesn't break without the actual stuff
+        # Get frames
         lidarFrame = service.get().frame
         ret, camFrame = cap.read()
-        lidarFrameList.append(lidarFrame)
-        camFrameList.append(camFrame)
         
         # Print the frame ID
-        print("Received frame with ID:", lidarFrame.id)
-    
-        cur_time = time.monotonic()
-        #time_to_pause = frameTime - (cur_time-old_time)
-        #time.sleep(time_to_pause)
-        running = False 
+        print("Received frame with ID:", lidarFrame.id) 
 
 
-# Savedata
-os.makedirs(savePath,exist_ok=True)
-lidarArr = np.array(lidarFrameList)
-camArr = np.array(camFrameList)
-print("Frames have been saved")
-np.save(savePath+"lidar_{}.npy".format(num),lidarArr)
-print(camArr.shape)
-cv.imwrite(savePath+"cam_{}.png".format(num),camArr[0,:,:,:])
-np.save(savePath+"cam_{}.npy".format(num),camArr)
+        # Savedata
+        np.save(savePath+"lidar_{}.npy".format(num),lidarArr)
+        cv.imwrite(savePath+"cam_{}.png".format(num),camArr[0,:,:,:])
+        print("Frames have been saved using number {}".format(num))
+        usIn = input("Press enter to take another frame, type anything to quit0")
+        if len(usIn) != 0:
+            running = False
 
-# TODO: MATLAB want their point clouds as a PCD file -> USE Open3d!
 
