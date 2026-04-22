@@ -89,7 +89,7 @@ for i = 1:10:length(t)
   exportgraphics(gca,"scanline_example_squished.gif",append=true);
 end
 
-%% Downsampling
+%% Downsampling - every nth scanline
 natFreq = 270; % Hz
 natT = 1/natFreq; % s, period
 thetaMaxH = 80; % Degrees - Max horizontal angle of the lidar 
@@ -128,9 +128,9 @@ rLow(indexLow+1:end) = (1-1*timeLow(indexLow+1:end)/frameTimeLow)/(1-timeLow(ind
 downTime = zeros(length(timeLow),1);
 downSampleBy = scanLinesHigh/scanLinesLow;
 j = 1;
-for i = 0:downSampleBy:numPeriodsHigh-1
+for i = 0:numPeriodsLow-1
     %fprintf("Input at %d to %d\n\tfrom %d to %d\n",resolution*(j-1)+1,resolution*j,(i-1+downSampleBy)*resolution+1,(i-1+downSampleBy)*resolution+resolution)
-    downTime(resolution*(j-1)+1:resolution*j) = (i-1+downSampleBy)*resolution+1:(i-1+downSampleBy)*resolution+resolution;
+    downTime(resolution*(j-1)+1:resolution*j) = (i*downSampleBy)*resolution+1:(i*downSampleBy)*resolution+resolution;
     j=j+1;
 end
 
@@ -182,9 +182,111 @@ plot(thetaHHigh(downTime),thetaVHigh(downTime),'k'); xlabel("Horizontal Angle");
 %% Error 
 errorH = thetaHLow - thetaHDownsample(downTime);
 errorV = thetaVLow - thetaVDownsample(downTime);
-fprintf("Average angle difference " + ...
-    "between lower scanlines and downsampled scanlines:\nHorizontal=%4d" + ...
-    "\nVertical=%d\n\n",mean(abs(errorH)),mean(abs(errorV)));
-fprintf("Max angle difference " + ...
-    "between lower scanlines and downsampled scanlines:\nHorizontal=%d" + ...
-    "\nVertical=%d\n",max(abs(errorH)),max(abs(errorV)));
+fprintf("Average angle (degrees) difference " + ...
+    "between lower scanlines and downsampled scanlines:\nHorizontal=%.4f" + ...
+    "\nVertical=%.4f\n\n",mean(abs(errorH)),mean(abs(errorV)));
+fprintf("Max angle (degrees) difference " + ...
+    "between lower scanlines and downsampled scanlines:\nHorizontal=%.4f" + ...
+    "\nVertical=%.4f\n",max(abs(errorH)),max(abs(errorV)));
+
+% Plotting Error
+figure;
+tiledlayout(1,2);
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],errorH,"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored Horizontal error",scanLinesLow)); colorbar();
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],errorV,"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored Vertical error",scanLinesLow)); colorbar();
+
+figure; hold on;
+scatter(thetaHLow,thetaVLow,15,'green','DisplayName','64 Scanlines');
+scatter(thetaHHigh(downTime),thetaVHigh(downTime),10,'red','filled','DisplayName','512 Downsampled');
+legend(); xlabel("Horizontal Angle"); ylabel("Vertical Angle")
+%% Fixing Error
+function wrapped = wrap(toWrap,wrapLength,shift)
+    toWrap = toWrap+shift;
+    
+    % Only one of these should actually have anything 
+    idWrapDown = toWrap > wrapLength;
+    idWrapUp = toWrap < 1;
+
+    wrapped = toWrap;
+    wrapped(idWrapDown) = toWrap(idWrapDown) - wrapLength;
+    wrapped(idWrapUp) = wrapLength - toWrap(idWrapUp);
+    
+    if ~(isempty(find(wrapped<1, 1)) || isempty(find(wrapped>wrapLength, 1)))
+        print("Something messed up")
+    end
+    return 
+end
+
+figure;
+plot(downTime,'b'); hold on
+minError = 1e9;
+for i = -100:100
+    newDownTime = wrap(downTime,length(scanLinesLow),i);
+    plot(newDownTime,'r');
+    errorH = thetaHLow - thetaHHigh(newDownTime);
+    errorV = thetaVLow - thetaVDownsample(newDownTime);
+    %fprintf("Shift by %3.0d | error H=%3.3f, V=%3.3f\n",i,sum(abs(errorH)),sum(abs(errorV)))
+    errorSum = sum(abs(errorH)) + sum(abs(errorV));
+    if errorSum < minError 
+        minError = errorSum;
+        bestShift = i; % Store the best shift value
+    end
+end
+plot(downTime,'b'); title("Shifted Indices");
+newDownTime = wrap(downTime,length(scanLinesLow),)
+
+
+
+
+%% Nearest Neighbor Downsampling
+% Run after running the downsampling section, reusing variables
+
+% For each value in smaller scan, subtract from larger scan, find index of
+% minimum 
+DifH = repmat(thetaHHigh,length(thetaHLow),1);
+DifV = repmat(thetaVHigh,length(thetaVLow),1);
+
+for i = 1:length(thetaHLow)
+   DifH(i,:) = DifH(i,:) - thetaHLow(i);
+   DifV(i,:) = DifV(i,:) - thetaVLow(i);
+end
+
+[minH,indH] = min(abs(DifH),[],2);
+[minV,indV] = min(abs(DifV),[],2);
+
+figure; tiledlayout(2,2);
+nexttile(1); 
+plot(thetaHHigh(indH),thetaVHigh(indV),'k'); xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("Mirror angles for %d scanlines downsampled to %d scanlines",scanLinesHigh, scanLinesLow));
+nexttile(2); 
+plot(thetaHLow,thetaVLow,'b','LineStyle','-'); xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("Mirror angles for %d scanlines downsampled to %d scanlines",scanLinesHigh, scanLinesLow));
+nexttile(3,[1 2]); hold on
+scatter(thetaHHigh(indH),thetaVHigh(indV),'r','Marker','.','DisplayName','512 Downsampled'); xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("Mirror angles for %d scanlines downsampled to %d scanlines",scanLinesHigh, scanLinesLow));
+scatter(thetaHLow,thetaVLow,'b','Marker','.','DisplayName','64'); xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("Mirror angles for %d downsampled and %d scanlines",scanLinesLow, scanLinesLow));
+legend;
+
+
+% Looking at error
+errorH = thetaHLow - thetaHHigh(indH);
+errorV = thetaVLow - thetaVHigh(indV);
+
+figure;
+tiledlayout(2,1);
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],errorH,"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored Horizontal error",scanLinesLow)); colorbar();
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],errorV,"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored Vertical error",scanLinesLow)); colorbar();
+
+figure;
+tiledlayout(2,1);
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],abs(errorH),"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored abs(Horizontal error)",scanLinesLow)); colorbar();
+nexttile; 
+scatter(thetaHLow,thetaVLow,[],abs(errorV),"filled");
+xlabel("Horizontal Angle"); ylabel("Vertical Angle"); title(sprintf("%d scanlines with colored abs(Vertical error)",scanLinesLow)); colorbar();
