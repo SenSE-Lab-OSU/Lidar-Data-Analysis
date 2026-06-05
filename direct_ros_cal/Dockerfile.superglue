@@ -1,0 +1,12 @@
+FROM koide3/direct_visual_lidar_calibration:humble
+
+# Install pip and PyTorch (CUDA 12.1 wheel works with host driver ≥ 525, we have 580)
+RUN apt-get update && apt-get install -y python3-pip git xvfb && rm -rf /var/lib/apt/lists/*
+RUN python3 -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+RUN python3 -m pip install "numpy<2" matplotlib blickfeld-qb2
+
+# Clone SuperGlue pretrained network models
+RUN git clone https://github.com/magicleap/SuperGluePretrainedNetwork.git /root/SuperGluePretrainedNetwork
+
+# Make the superglue script find the models module
+ENV PYTHONPATH=/root/SuperGluePretrainedNetwork
