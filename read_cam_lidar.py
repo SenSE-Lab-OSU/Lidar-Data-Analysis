@@ -1,8 +1,9 @@
 import numpy as np
 from pypcd4 import PointCloud
-import cv2 as cv
 import os, re, sys, blickfeld_qb2 
-os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
+
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Significant speed improvements when this line is **BEFORE** import cv2 
+import cv2 as cv
 
 LIDAR_IP = sys.argv[2] if len(sys.argv) > 2 else "192.168.0.253"
 SAVE_DIR = sys.argv[1] if len(sys.argv) > 1 else "./"
@@ -54,9 +55,14 @@ def get_lastest_fnum():
 
 def take_data(lpath,cpath,save_id):
     # Open camera, 0 is default, 1 may be the usb camera
+    print("Opening Camera ")
     cap = cv.VideoCapture(1)
+    print("Camera Opened, Getting width and height: ")
     cap.set(cv.CAP_PROP_FRAME_WIDTH, 3840)
-    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 2160)
+    #cap.set(cv.CAP_PROP_FRAME_HEIGHT, 2160)
+    cam_w = cap.get(cv.CAP_PROP_FRAME_WIDTH)
+    cam_h = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+    print("width={}, height={}".format(cam_w,cam_h))
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
@@ -92,7 +98,7 @@ def take_data(lpath,cpath,save_id):
                 
                 print("Frames have been saved with id: {}".format(id))
                 usIn = input("Press 't' to terminate, otherwise press enter to continue: ")
-                if len(usIn) == 't':
+                if usIn == 't':
                     running = False
             id += 1
 
@@ -111,6 +117,7 @@ def main():
 
     save_num = get_lastest_fnum() + 1
     print("First save at:\n\t{}\\lidar_{}.npy\n\t{}\\cam_{}.png".format(full_lidar_dir,save_num,full_cam_dir,save_num))
+    print("Going into take_data function")
     take_data(full_lidar_dir,full_cam_dir,save_num)
 
 
