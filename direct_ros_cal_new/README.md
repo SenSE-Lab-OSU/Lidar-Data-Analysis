@@ -41,11 +41,11 @@ Using placeholder values will produce a wrong translation in the final result.
 ## Step 2 — Create ROS2 bags
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/bags:/tmp/bags \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/data:/tmp/data:ro \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/create_bags.py:/tmp/create_bags.py:ro \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yBags:/tmp/bags 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yData:/tmp/data:ro 
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\create_bags.py:/tmp/create_bags.py:ro 
+  direct_visual_lidar_calibration:superglue 
   python3 /tmp/create_bags.py
 ```
 
@@ -57,14 +57,14 @@ Output: one ROS2 bag per frame pair under `bags/frame_NNN/`, each containing:
 ## Step 3 — Preprocess
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/bags:/tmp/input_bags \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yBags:/tmp/input_bags 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  direct_visual_lidar_calibration:superglue 
   ros2 run direct_visual_lidar_calibration preprocess /tmp/input_bags /tmp/preprocessed -a
 ```
 
-Output per frame in `custom_preprocessed/`:
+Output per frame in ` /`:
 - `frame_NNN.ply` — point cloud
 - `frame_NNN.png` — camera image
 - `frame_NNN_lidar_intensities.png` — LiDAR intensity image (will be replaced in Step 4)
@@ -78,10 +78,10 @@ The default preprocess tool creates a full-sphere equirectangular image; the QB2
 and blends range + reflectivity to produce images with strong edges for matching.
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/fix_intensity_images.py:/tmp/fix_intensity_images.py:ro \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\fix_intensity_images.py:/tmp/fix_intensity_images.py:ro 
+  direct_visual_lidar_calibration:superglue 
   python3 /tmp/fix_intensity_images.py
 ```
 
@@ -96,9 +96,9 @@ they remain consistent. **Re-run this step every time preprocess is re-run.**
 ## Step 5 — SuperGlue feature matching
 
 ```bash
-docker run --rm --gpus all -e MPLBACKEND=Agg \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all -e MPLBACKEND=Agg 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  direct_visual_lidar_calibration:superglue 
   ros2 run direct_visual_lidar_calibration find_matches_superglue.py /tmp/preprocessed
 ```
 
@@ -111,9 +111,9 @@ high-confidence ones.
 ## Step 6 — Initial pose estimate
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  direct_visual_lidar_calibration:superglue 
   ros2 run direct_visual_lidar_calibration initial_guess_auto /tmp/preprocessed
 ```
 
@@ -124,10 +124,10 @@ if it reports `NO_CONVERGENCE`, the match quality may be too low — try adjusti
 ## Step 7 — Fine calibration
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  direct_visual_lidar_calibration:superglue \
-  bash -c "Xvfb :99 -screen 0 1280x960x24 & sleep 1 && export DISPLAY=:99 && \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  direct_visual_lidar_calibration:superglue 
+  bash -c "export DISPLAY=192.168.1.7:0.0 && 
   ros2 run direct_visual_lidar_calibration calibrate /tmp/preprocessed --background --auto_quit"
 ```
 
@@ -140,10 +140,10 @@ safe to stop the container once the file is written.
 ## Step 8 — Visualize results
 
 ```bash
-docker run --rm --gpus all \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/custom_preprocessed:/tmp/preprocessed \
-  -v /research/nfs_ertin_1/home/yuyi/lidar_cal/visualize_cal.py:/tmp/visualize_cal.py:ro \
-  direct_visual_lidar_calibration:superglue \
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\visualize_cal.py:/tmp/visualize_cal.py:ro 
+  direct_visual_lidar_calibration:superglue 
   python3 /tmp/visualize_cal.py /tmp/preprocessed
 ```
 
@@ -188,3 +188,27 @@ p_camera = T_camera_lidar[:3,:3] @ p_lidar + T_camera_lidar[:3,3]
 | `rosbag2` directory exists error | Writer refuses pre-existing directory | `create_bags.py` does `shutil.rmtree` before writing |
 | `numpy` version conflict in container | matplotlib upgrades numpy to 2.x, breaks cv2 | Dockerfile pins `numpy<2` |
 | Translation result > 0.5 m | Wrong camera intrinsics | Set real fx/fy/cx/cy in Step 1 |
+
+
+## Step 9 - Alternative
+```bash
+docker run --rm --gpus all 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yData:/tmp/data:ro 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yBags:/tmp/bags 
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\:/tmp/scripts:ro 
+  direct_visual_lidar_calibration:superglue 
+  /tmp/scripts/run.sh
+```
+
+## Testing the accuracy of the transformation
+Assuming you have some human made correlations between points in a point cloud and pixels in the corresponding image, it is possible to determine the average pixel projection error.  This is simply projecting points to pixels and determining the distance between the result and the expected result. 
+```bash
+docker run -it --rm --gpus all
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\LiCamCal\match.json:/tmp/match.json:ro
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\test_accuracy.py:/tmp/scripts/test_accuracy.py:ro
+  direct_visual_lidar_calibration:superglue 
+  python3 -i /tmp/scripts/test_accuracy.py 
+
+```

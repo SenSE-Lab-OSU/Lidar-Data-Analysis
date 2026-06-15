@@ -15,7 +15,7 @@ import glob
 import numpy as np
 import cv2
 
-PREPROCESS_DIR = "/tmp/preprocessed"
+PREPROCESS_DIR = str(sys.argv[1]) if len(sys.argv) > 1 else "/tmp/preprocessed"
 OUT_W = 1024
 OUT_H = 1024
 
@@ -26,7 +26,7 @@ EL_PAD_DEG = 1.0
 # Blend weight: 0.0 = pure reflectivity, 1.0 = pure range.
 # Range has strong edges at depth discontinuities (aligns with camera edges).
 # Reflectivity captures material differences. 0.5 blends both equally.
-RANGE_WEIGHT = 0.5
+RANGE_WEIGHT = float(sys.argv[2])/100 if len(sys.argv) >  2 else 0.5
 
 
 def read_ply_xyz_intensity(path):

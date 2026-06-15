@@ -1,70 +1,118 @@
 import numpy as np
-import os, json, re, time
-import blickfeld_qb2
-os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
+from pypcd4 import PointCloud
 import cv2 as cv
+import os, re, sys, blickfeld_qb2 
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0" # Makes connection way faster
 
-# Finding Data Save path from config file
-f = open("config.json")
-savePath = json.load(f)
-savePath = savePath["dataPath"]
-usIn = input("Save path is {}\nIf it looks right press enter, else type in correct path or fix config file and try again\n>>".format(savePath))
-if len(usIn) != 0:
-    savePath = usIn
-# appending date to savepath
-savePath = os.path.join(savePath, time.strftime("data-%m-%d-%Y",time.gmtime())) 
-print("Using savepath: {}".format(savePath))
-# making path if not exists
-if not os.path.isdir(savePath):
-    print("Path does not exist, creating",end='')
-    os.makedirs(savePath,exist_ok=True)
-    print(os.path.isdir(savePath))
-# Checking if there are files in directory
-preExistingFiles = os.listdir(savePath)
-# Changing save index to one not in use
-saveIndex = 1
-if len(preExistingFiles) != 0:
-    print("Files already in save directory.  ",end='')
-    res = [int(re.search('_(\\d+)\\.',i).group(1)) for i in preExistingFiles if re.search('_(\\d+)\\.',i) is not None]
-    saveIndex = np.max(res) + 1
-print("saving at _{}".format(saveIndex))
-        
-time.sleep(10)
+LIDAR_IP = sys.argv[2] if len(sys.argv) > 2 else "192.168.0.253"
+SAVE_DIR = sys.argv[1] if len(sys.argv) > 1 else "./"
+LIDAR_DIR = "lidar"
+CAM_DIR = "camera"
 
 
-# Open camera, 0 is default, 1 may be the usb camera
-cap = cv.VideoCapture(1)
-cap.set(cv.CAP_PROP_FRAME_WIDTH, 3840)
-cap.set(cv.CAP_PROP_FRAME_HEIGHT, 2160)
-if not cap.isOpened():
-    print("Cannot open camera")
-    exit()
-ret, testFrame = cap.read()
-if not ret:
-    print("Camera failed to read")
-print("Webcam dimensions: {}".format(testFrame.shape))
 
-# Open LIDAR
-with blickfeld_qb2.Channel(fqdn_or_ip="192.168.0.253") as channel:
-    service = blickfeld_qb2.core_processing.services.PointCloud(channel)
+
+def get_lastest_fnum():
+    lidar_f = list(os.walk(os.path.join(SAVE_DIR,LIDAR_DIR)))[0][2] # Files only in top 
+    cam_f = list(os.walk(os.path.join(SAVE_DIR,CAM_DIR)))[0][2]
     
-    running = True
-    num = 1
-    while running:
-        # Get frames
-        lidarFrame = service.get().frame
-        ret, camFrame = cap.read()
+    if len(lidar_f) == 0 and len(cam_f) == 0:
+        # If the folders are both empty 
+        return 0
+    
+    lpattern = r"lidar_([0-9]+)"
+    lidar_numbers = []
+    for file in lidar_f:
+        fname = os.path.splitext(file)
+        if fname[1] == ".npy":
+            num = re.findall(lpattern, fname[0])
+            if len(num) == 1:
+                # file name is valid
+                lidar_numbers.append(int(num[0]))
+    cpattern = r"cam_([0-9]+)"
+    cam_numbers = []
+    for file in cam_f:
+        fname = os.path.splitext(file)
+        if fname[1] == ".png":
+            num = re.findall(cpattern, fname[0])
+            if len(num) == 1:
+                # file name is valid
+                cam_numbers.append(int(num[0]))
+    lidar_numbers = np.sort(lidar_numbers)
+    cam_numbers = np.sort(cam_numbers)
+    if len(lidar_numbers) != len(cam_numbers):
+        print("ERROR: Lidar and camera folders have an uneven number of saved files!")
+        print("\t{}/{}: {} files".format(SAVE_DIR,LIDAR_DIR,len(lidar_numbers)))
+        print("\t{}/{}: {} files".format(SAVE_DIR,CAM_DIR,len(cam_numbers)))
+    else:
+        for i in range(len(lidar_numbers)):
+            if lidar_numbers[i] != cam_numbers[i]:
+                print("ERROR: Missing either lidar or camera save")
+                print("\tbad pair {}/lidar_{} and {}/cam_{}".format(LIDAR_DIR,lidar_numbers[i],CAM_DIR,cam_numbers[i]))
+    return np.max(cam_numbers)
+
+
+def take_data(lpath,cpath,save_id):
+    # Open camera, 0 is default, 1 may be the usb camera
+    cap = cv.VideoCapture(1)
+    cap.set(cv.CAP_PROP_FRAME_WIDTH, 3840)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT, 2160)
+    if not cap.isOpened():
+        print("Cannot open camera")
+        exit()
+    ret, testFrame = cap.read()
+    if not ret:
+        print("Camera failed to read")
+    print("Webcam dimensions: {}".format(testFrame.shape))
+
+    # Open LIDAR
+    with blickfeld_qb2.Channel(fqdn_or_ip=LIDAR_IP) as channel:
+        service = blickfeld_qb2.core_processing.services.PointCloud(channel)
         
-        # Print the frame ID
-        print("Received frame with ID:", lidarFrame.id) 
+        id = save_id
+        running = True
+        while running:
+            # Get frames
+            lidarFrame = service.get().frame
+            pcd = PointCloud.from_xyz_points(lidarFrame.binary.cartesian)
+            ret, camFrame = cap.read()
+            
+            # Print the frame ID
+            if not ret or not lidarFrame.id:
+                print("Failed to recieve read lidar and camera:") 
+            else:
+                # Savedata
+                lidar_save = os.path.join(lpath,"lidar_{}.npy".format(id))
+                pcd_save = os.path.join(lpath,"lidar_{}.pcd".format(id))
+                cam_save = os.path.join(cpath,"cam_{}.png".format(id))
+
+                np.save(lidar_save,lidarFrame)
+                pcd.save(pcd_save)
+                cv.imwrite(cam_save,camFrame)
+                
+                print("Frames have been saved with id: {}".format(id))
+                usIn = input("Press 't' to terminate, otherwise press enter to continue: ")
+                if len(usIn) == 't':
+                    running = False
+            id += 1
 
 
-        # Savedata
-        np.save(savePath+"lidar_{}.npy".format(num),lidarFrame)
-        cv.imwrite(savePath+"cam_{}.png".format(num),camFrame)
-        print("Frames have been saved using number {}".format(num))
-        usIn = input("Press enter to take another frame, type anything to quit0")
-        if len(usIn) != 0:
-            running = False
+
+def main():
+    full_lidar_dir = os.path.join(SAVE_DIR,LIDAR_DIR)
+    full_cam_dir = os.path.join(SAVE_DIR,CAM_DIR)
+
+    if not os.path.isdir(SAVE_DIR):
+        print("{} does not exist, creating...".format(SAVE_DIR))
+    # Creating directories either way, but just wanted to make it say something incase the directory didn't already exist
+    os.makedirs(full_cam_dir,exist_ok=True)
+    os.makedirs(full_lidar_dir,exist_ok=True)
+    
+
+    save_num = get_lastest_fnum() + 1
+    print("First save at:\n\t{}\\lidar_{}.npy\n\t{}\\cam_{}.png".format(full_lidar_dir,save_num,full_cam_dir,save_num))
+    take_data(full_lidar_dir,full_cam_dir,save_num)
 
 
+if __name__ == "__main__":
+    main()
