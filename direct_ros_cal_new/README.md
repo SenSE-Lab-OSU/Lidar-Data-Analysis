@@ -190,7 +190,17 @@ p_camera = T_camera_lidar[:3,:3] @ p_lidar + T_camera_lidar[:3,3]
 | Translation result > 0.5 m | Wrong camera intrinsics | Set real fx/fy/cx/cy in Step 1 |
 
 
-## Step 9 - Alternative
+## Step 9a - Alternative Running Previous steps in one go
+```bash
+docker run --rm --gpus all
+  -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\data-06-15-2026:/tmp
+  -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal_new:/tmp/scripts:ro 
+  direct_visual_lidar_calibration:superglue 
+  /tmp/scripts/runOne.sh -i 172.28.7.66
+```
+Replace with your actual ip addr
+
+## Step 9 - Alternative Running a grid search of 0-100% Range based lidar image
 ```bash
 docker run --rm --gpus all 
   -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\yData:/tmp/data:ro 
@@ -198,8 +208,9 @@ docker run --rm --gpus all
   -v C:\Users\rose\OneDrive\Documents\0.Important_Files\2.School\3.Research\LidarDataAnalysis\data\ycustom_preprocessed:/tmp/preprocessed 
   -v C:\Users\rose\Documents\Lidar-Data-Analysis\direct_ros_cal\:/tmp/scripts:ro 
   direct_visual_lidar_calibration:superglue 
-  /tmp/scripts/run.sh
+  /tmp/scripts/runGrid.sh
 ```
+
 
 ## Testing the accuracy of the transformation
 Assuming you have some human made correlations between points in a point cloud and pixels in the corresponding image, it is possible to determine the average pixel projection error.  This is simply projecting points to pixels and determining the distance between the result and the expected result. 
