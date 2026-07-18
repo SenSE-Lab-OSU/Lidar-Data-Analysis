@@ -2,5 +2,5 @@ venv/
 config.json
 LiCamCal
 resources
-3_ManualCorrespondance/3_Visualizations
-3_ManualCorrespondance/4_LabeledImg2PC
+5_Results/3_Visualizations
+5_Results/4_LabeledImg2PC

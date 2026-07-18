@@ -11,8 +11,8 @@ Output layout (under --save-dir, default: current working directory):
         camera/
             cam_<N>.png
         lidar/
-            lidar_<N>.npy   # raw Blickfeld frame object (pickled via numpy)
-            lidar_<N>.pcd   # point cloud in PCD format
+            lidar_<N>.npy   # raw Blickfeld frame object 
+            lidar_<N>.pcd   # point cloud in PCD format for Koide create_bags.py
 
 Frame numbering resumes automatically from the highest existing index found
 in the output directories, so re-running the script on an existing save
@@ -45,6 +45,9 @@ LOGGER = logging.getLogger("read_cam_lidar")
 DEFAULT_LIDAR_IP = "192.168.0.253"
 DEFAULT_CAMERA_INDEX = 1
 DEFAULT_CAMERA_WIDTH = 3840
+DEFAULT_CAMERA_HEIGHT = 2160
+DEFAULT_CAMERA_ZOOM = None  # I am using whatever value zoom is default at, set this var to something if you know better!!
+DEFAULT_CAMERA_FOCUS = None  # I am using whatever value zoom is default at, set this var to something if you know better!!
 
 LIDAR_DIRNAME = "lidar"
 CAMERA_DIRNAME = "camera"
@@ -117,7 +120,7 @@ def get_next_save_index(lidar_dir: Path, camera_dir: Path) -> int:
     return max(lidar_numbers + camera_numbers) + 1
 
 
-def open_camera(camera_index: int, width: int = DEFAULT_CAMERA_WIDTH) -> cv.VideoCapture:
+def open_camera(camera_index: int, width: int = DEFAULT_CAMERA_WIDTH, height: int = DEFAULT_CAMERA_HEIGHT) -> cv.VideoCapture:
     LOGGER.info("Opening camera at index %d ...", camera_index)
     cap = cv.VideoCapture(camera_index)
     if not cap.isOpened():
@@ -126,8 +129,20 @@ def open_camera(camera_index: int, width: int = DEFAULT_CAMERA_WIDTH) -> cv.Vide
     # Disable autofocus so focus stays fixed/consistent across all captured
     # frames. Not all backends support this, so we verify it took effect.
     cap.set(cv.CAP_PROP_AUTOFOCUS, 0)
+    # I don't know what default values are so I am setting them to whatever they are at runtime--Change maybe!!
+    if DEFAULT_CAMERA_ZOOM is not None:
+        cap.set(cv.CAP_PROP_ZOOM,zoom)
+    else:
+        zoom = cap.get(cv.CAP_PROP_ZOOM)
+        cap.set(cv.CAP_PROP_ZOOM,zoom)
+    if DEFAULT_CAMERA_FOCUS is not None:
+        cap.set(cv.CAP_PROP_FOCUS,focus)
+    else:
+        focus = cap.get(cv.CAP_PROP_FOCUS)
+        cap.set(cv.CAP_PROP_FOCUS,focus)
 
     cap.set(cv.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv.CAP_PROP_FRAME_HEIGHT,height)
     reported_w = cap.get(cv.CAP_PROP_FRAME_WIDTH)
     reported_h = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
     autofocus_state = cap.get(cv.CAP_PROP_AUTOFOCUS)
