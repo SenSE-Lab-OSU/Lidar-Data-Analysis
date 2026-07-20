@@ -372,3 +372,7 @@ python visualize_calibration.py --dir <directory> -t <transform.json>
 - `--radius` — point radius in pixels for the lidar-on-image render (default 2).
 
 **Output:** `lidar_on_image.png` and `image_on_lidar_front.png` per pair, saved under the output directory.
+
+## 4 Scripts
+
+## 5 Results
